@@ -2,10 +2,13 @@ package com.burhanrashid52.photoediting
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
@@ -23,6 +26,8 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.isVisible
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -47,7 +52,9 @@ import ja.burhanrashid52.photoeditor.TextStyleBuilder
 import ja.burhanrashid52.photoeditor.ViewType
 import ja.burhanrashid52.photoeditor.shape.ShapeBuilder
 import ja.burhanrashid52.photoeditor.shape.ShapeType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
@@ -84,7 +91,10 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
 
         initViews()
 
-        handleIntentImage(mPhotoEditorView.source)
+        val imageLoaded = handleIntentImage(mPhotoEditorView.source)
+
+        setupViews(imageLoaded)
+
 
         mWonderFont = Typeface.createFromAsset(assets, "beyond_wonderland.ttf")
 
@@ -119,25 +129,62 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
 
         mPhotoEditor.setOnPhotoEditorListener(this)
 
-        //Set Image Dynamically
-        mPhotoEditorView.source.setImageResource(R.drawable.paris_tower)
-
         mSaveFileHelper = FileSaveHelper(this)
     }
 
-    private fun handleIntentImage(source: ImageView) {
+    private fun handleIntentImage(source: ImageView): Boolean {
         if (intent == null) {
-            return
+            return false
         }
 
-        when (intent.action) {
+        return when (intent.action) {
             Intent.ACTION_EDIT, ACTION_NEXTGEN_EDIT -> {
                 try {
-                    val uri = intent.data
-                    val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                    val uri = intent.data ?: return false
+                    val input = contentResolver.openInputStream(uri)
+                        ?: throw IOException("couldn't open $uri")
+
+                    val bitmap = input.use {
+                        val bitmap = BitmapFactory.decodeStream(it)
+                        val exif = ExifInterface(it)
+
+                        if (intent.hasExtra(EXTRA_ORIENTATION)) {
+                            exif.setAttribute(
+                                ExifInterface.TAG_ORIENTATION,
+                                intent.getIntExtra(EXTRA_ORIENTATION, 0).toString(),
+                            )
+                        }
+
+                        val rotation = exif.rotationDegrees
+                        val flipped = exif.isFlipped
+
+                        if (rotation == 0 && !flipped) {
+                            bitmap
+                        } else {
+                            val matrix = Matrix()
+                            if (flipped) {
+                                matrix.setRotate(-rotation.toFloat())
+                                matrix.postScale(-1f, 1f)
+                            } else {
+                                matrix.setRotate(rotation.toFloat())
+                            }
+                            Bitmap.createBitmap(
+                                bitmap,
+                                0,
+                                0,
+                                bitmap.width,
+                                bitmap.height,
+                                matrix,
+                                true
+                            )
+                        }
+                    }
+
                     source.setImageBitmap(bitmap)
+                    true
                 } catch (e: IOException) {
                     e.printStackTrace()
+                    false
                 }
             }
 
@@ -147,8 +194,10 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
                     val imageUri = intent.data
                     if (imageUri != null) {
                         source.setImageURI(imageUri)
+                        return true
                     }
                 }
+                false
             }
         }
     }
@@ -159,7 +208,9 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
         mRvTools = findViewById(R.id.rvConstraintTools)
         mRvFilters = findViewById(R.id.rvFilterView)
         mRootView = findViewById(R.id.rootView)
+    }
 
+    private fun setupViews(imageLoaded: Boolean) {
         val imgUndo: ImageView = findViewById(R.id.imgUndo)
         imgUndo.setOnClickListener(this)
 
@@ -180,6 +231,15 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
 
         val imgShare: ImageView = findViewById(R.id.imgShare)
         imgShare.setOnClickListener(this)
+
+        if (imageLoaded) {
+            imgCamera.isVisible = false
+            imgGallery.isVisible = false
+            imgShare.isVisible = false
+        } else {
+            // Set default image
+            mPhotoEditorView.source.setImageResource(R.drawable.paris_tower)
+        }
     }
 
     override fun onEditTextChangeListener(rootView: View, text: String, colorCode: Int) {
@@ -272,6 +332,41 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
 
     @RequiresPermission(allOf = [Manifest.permission.WRITE_EXTERNAL_STORAGE])
     private fun saveImage() {
+        val action = intent.action
+        val data = intent.data
+        if (action == Intent.ACTION_EDIT && callingPackage != null && data != null) {
+            lifecycleScope.launch {
+                showLoading("Saving...")
+
+                val saveSettings = SaveSettings.Builder()
+                    .setClearViewsEnabled(false)
+                    .setTransparencyEnabled(false)
+                    .build()
+
+                val success = withContext(Dispatchers.IO) {
+                    val result = mPhotoEditor.saveAsBitmap(saveSettings)
+
+                    try {
+                        contentResolver.openOutputStream(data).use {
+                            result.compress(Bitmap.CompressFormat.JPEG, 90, it)
+                        }
+                        true
+                    } catch (e: IOException) {
+                        false
+                    }
+                }
+                hideLoading()
+
+                if (success) {
+                    setResult(Activity.RESULT_OK)
+                    finish()
+                } else {
+                    showSnackbar("Failed to save Image")
+                }
+            }
+            return
+        }
+
         val fileName = System.currentTimeMillis().toString() + ".png"
         val hasStoragePermission = ContextCompat.checkSelfPermission(
             this,
@@ -286,7 +381,7 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
                     created: Boolean,
                     filePath: String?,
                     error: String?,
-                    uri: Uri?
+                    uri: Uri?,
                 ) {
                     lifecycleScope.launch {
                         if (created && filePath != null) {
@@ -492,5 +587,7 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
         private const val PICK_REQUEST = 53
         const val ACTION_NEXTGEN_EDIT = "action_nextgen_edit"
         const val PINCH_TEXT_SCALABLE_INTENT_KEY = "PINCH_TEXT_SCALABLE"
+
+        const val EXTRA_ORIENTATION = "orientation"
     }
 }
