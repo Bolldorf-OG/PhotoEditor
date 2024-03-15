@@ -138,7 +138,30 @@
         android:padding="8dp"
         android:src="@drawable/ic_share"
         app:layout_constraintBottom_toBottomOf="@+id/photoEditorView"
-        app:layout_constraintEnd_toStartOf="@+id/imgUndo"
+        app:layout_constraintEnd_toStartOf="@+id/imgRotateCw"
+        app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintStart_toEndOf="@+id/imgCamera" />
+
+    <ImageView
+        android:id="@+id/imgRotateCw"
+        android:layout_width="@dimen/top_tool_icon_width"
+        android:layout_height="wrap_content"
+        android:background="@color/semi_black_transparent"
+        android:padding="8dp"
+        android:src="@drawable/ic_rotate_right"
+        app:layout_constraintBottom_toBottomOf="@+id/photoEditorView"
+        app:layout_constraintEnd_toStartOf="@+id/imgRotateCcw"
+        app:layout_constraintStart_toEndOf="@+id/imgShare" />
+
+    <ImageView
+        android:id="@+id/imgRotateCcw"
+        android:layout_width="@dimen/top_tool_icon_width"
+        android:layout_height="wrap_content"
+        android:background="@color/semi_black_transparent"
+        android:padding="8dp"
+        android:src="@drawable/ic_rotate_left"
+        app:layout_constraintBottom_toBottomOf="@+id/photoEditorView"
+        app:layout_constraintEnd_toStartOf="@+id/imgUndo"
+        app:layout_constraintStart_toEndOf="@+id/imgRotateCw" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

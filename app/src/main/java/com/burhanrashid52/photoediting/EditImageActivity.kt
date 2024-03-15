@@ -247,6 +247,13 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
         val imgShare: ImageView = findViewById(R.id.imgShare)
         imgShare.setOnClickListener(this)
 
+        val imgRotateCw: ImageView = findViewById(R.id.imgRotateCw)
+        imgRotateCw.setOnClickListener(this)
+
+        val imgRotateCcw: ImageView = findViewById(R.id.imgRotateCcw)
+        imgRotateCcw.setOnClickListener(this)
+
+
         if (imageLoaded) {
             imgCamera.isVisible = false
             imgGallery.isVisible = false
@@ -305,6 +312,8 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
             R.id.imgSave -> saveImage()
             R.id.imgClose -> onBackPressed()
             R.id.imgShare -> shareImage()
+            R.id.imgRotateCw -> rotateImage(90f)
+            R.id.imgRotateCcw -> rotateImage(-90f)
             R.id.imgCamera -> {
                 val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
                 startActivityForResult(cameraIntent, CAMERA_REQUEST)
@@ -317,6 +326,10 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
                 startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_REQUEST)
             }
         }
+    }
+
+    private fun rotateImage(rotation: Float) {
+        mPhotoEditorView.rotation += rotation
     }
 
     private fun shareImage() {
