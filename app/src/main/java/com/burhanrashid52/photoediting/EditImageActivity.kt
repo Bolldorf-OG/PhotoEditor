@@ -73,7 +73,7 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
     private lateinit var mWonderFont: Typeface
     private lateinit var mRvTools: RecyclerView
     private lateinit var mRvFilters: RecyclerView
-    private val mEditingToolsAdapter = EditingToolsAdapter(this)
+    private lateinit var mEditingToolsAdapter: EditingToolsAdapter
     private val mFilterViewAdapter = FilterViewAdapter(this)
     private lateinit var mRootView: ConstraintLayout
     private val mConstraintSet = ConstraintSet()
@@ -94,6 +94,21 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
         val imageLoaded = handleIntentImage(mPhotoEditorView.source)
 
         setupViews(imageLoaded)
+
+        mEditingToolsAdapter = if (intent.hasExtra(EXTRA_TOOLS)) {
+            EditingToolsAdapter(
+                this,
+                intent.getStringArrayExtra(EXTRA_TOOLS)?.mapNotNull {
+                    try {
+                        ToolType.valueOf(it)
+                    } catch (e: IllegalArgumentException) {
+                        null
+                    }
+                }.orEmpty(),
+            )
+        } else {
+            EditingToolsAdapter(this)
+        }
 
 
         mWonderFont = Typeface.createFromAsset(assets, "beyond_wonderland.ttf")
@@ -588,6 +603,7 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
         const val ACTION_NEXTGEN_EDIT = "action_nextgen_edit"
         const val PINCH_TEXT_SCALABLE_INTENT_KEY = "PINCH_TEXT_SCALABLE"
 
+        const val EXTRA_TOOLS = "tools"
         const val EXTRA_ORIENTATION = "orientation"
     }
 }

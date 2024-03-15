@@ -90,6 +90,8 @@
         app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintWidth="wrap_content"
+        tools:itemCount="3"
         tools:listitem="@layout/row_editing_tools" />
 
     <androidx.recyclerview.widget.RecyclerView
