@@ -13,12 +13,16 @@ class SaveSettings private constructor(builder: Builder) {
     val isClearViewsEnabled: Boolean
     val compressFormat: CompressFormat
     val compressQuality: Int
+    val width: Int?
+    val height: Int?
 
     class Builder {
         @JvmField var isTransparencyEnabled = true
         @JvmField var isClearViewsEnabled = true
         @JvmField var compressFormat = CompressFormat.PNG
         @JvmField var compressQuality = 100
+        @JvmField var width: Int? = null
+        @JvmField var height: Int? = null
 
         /**
          * Define a flag to enable transparency while saving image
@@ -65,6 +69,20 @@ class SaveSettings private constructor(builder: Builder) {
             return this
         }
 
+        /**
+         * Override the render size, if not set uses the size of the [PhotoEditorView]
+         *
+         * @param width width of bitmap to render
+         * @param height height of bitmap to render
+         *
+         * @return Builder
+         */
+        fun setSize(width: Int, height: Int): Builder {
+            this.width = width
+            this.height = height
+            return this
+        }
+
         fun build(): SaveSettings {
             return SaveSettings(this)
         }
@@ -75,5 +93,7 @@ class SaveSettings private constructor(builder: Builder) {
         isTransparencyEnabled = builder.isTransparencyEnabled
         compressFormat = builder.compressFormat
         compressQuality = builder.compressQuality
+        width = builder.width
+        height = builder.height
     }
 }

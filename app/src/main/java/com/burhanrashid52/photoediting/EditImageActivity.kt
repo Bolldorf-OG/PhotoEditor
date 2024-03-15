@@ -356,6 +356,10 @@ class EditImageActivity : BaseActivity(), OnPhotoEditorListener, View.OnClickLis
                 val saveSettings = SaveSettings.Builder()
                     .setClearViewsEnabled(false)
                     .setTransparencyEnabled(false)
+                    .setSize(
+                        width = mPhotoEditorView.source.drawable.intrinsicWidth,
+                        height = mPhotoEditorView.source.drawable.intrinsicHeight,
+                    )
                     .build()
 
                 val success = withContext(Dispatchers.IO) {

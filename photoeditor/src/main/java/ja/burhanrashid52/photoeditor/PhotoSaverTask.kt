@@ -2,7 +2,8 @@ package ja.burhanrashid52.photoeditor
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.view.View
+import androidx.core.graphics.withRotation
+import androidx.core.graphics.withScale
 import ja.burhanrashid52.photoeditor.BitmapUtil.removeTransparency
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,9 +19,8 @@ import java.io.IOException
 internal class PhotoSaverTask(
     private val photoEditorView: PhotoEditorView,
     private val boxHelper: BoxHelper,
-    private var saveSettings: SaveSettings
+    private var saveSettings: SaveSettings,
 ) {
-
     private val drawingView: DrawingView = photoEditorView.drawingView
 
     private fun onBeforeSaveImage() {
@@ -28,7 +28,7 @@ internal class PhotoSaverTask(
         drawingView.destroyDrawingCache()
     }
 
-    fun saveImageAsBitmap(): Bitmap {
+    suspend fun saveImageAsBitmap(): Bitmap {
         onBeforeSaveImage()
         val bitmap = buildBitmap()
         if (saveSettings.isClearViewsEnabled) {
@@ -69,18 +69,29 @@ internal class PhotoSaverTask(
         return result
     }
 
-    private fun buildBitmap(): Bitmap {
+    private suspend fun buildBitmap(): Bitmap {
         return if (saveSettings.isTransparencyEnabled) {
-            removeTransparency(captureView(photoEditorView))
+            removeTransparency(captureView())
         } else {
-            captureView(photoEditorView)
+            captureView()
         }
     }
 
-    private fun captureView(view: View): Bitmap {
-        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+    private suspend fun captureView(): Bitmap {
+        val width: Int = saveSettings.width ?: photoEditorView.width
+        val height: Int = saveSettings.height ?: photoEditorView.height
+
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
         val canvas = Canvas(bitmap)
-        view.draw(canvas)
+        canvas.drawBitmap(photoEditorView.saveFilter(), 0f, 0f, null)
+        canvas.withScale(
+            x = width.toFloat() / photoEditorView.drawingView.width,
+            y = height.toFloat() / photoEditorView.drawingView.height,
+        ) {
+            photoEditorView.drawingView.draw(canvas)
+        }
+
         return bitmap
     }
 
